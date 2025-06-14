@@ -299,7 +299,7 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Car Management System</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Json App Cars</h1>
             <div className="flex items-center gap-4">
               {isAuthenticated && (
                 <div className="flex items-center gap-2">
