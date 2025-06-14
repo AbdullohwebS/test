@@ -33,40 +33,38 @@ function App() {
 
   const ITEMS_PER_PAGE = 5
 
-  /* ───────────────────────────────────
-     ▸ Sarlavhani o‘zgartirish (tab title)
-     ─────────────────────────────────── */
+  // ✅ Brauzer title o‘zgartirish
   useEffect(() => {
-    document.title = "Car Manager | FN37"
-  }, [])
+    document.title = isAuthenticated
+      ? "Car Manager - fn37-best"
+      : "Car Manager - Guest"
+  }, [isAuthenticated])
 
+  // Web Worker search setup
   useEffect(() => {
-    document.title = "Car Manager | FN37"
-  }, [])
-
-  useEffect(() => {
-
     const savedAuth = localStorage.getItem("carapp_auth")
     if (savedAuth === "authenticated") {
       setIsAuthenticated(true)
     }
 
     const workerCode = `
-      self.onmessage = (event) => {
-        const { cars, query } = event.data;
-        if (!query || !cars) {
-          self.postMessage({ results: [] });
-          return;
-        }
-        const searchTerm = query.toLowerCase();
-        const results = cars.filter((car) => {
-          const brand = car.brand?.toLowerCase() || "";
-          const model = car.model?.toLowerCase() || "";
-          return brand.includes(searchTerm) || model.includes(searchTerm);
-        });
-        setTimeout(() => self.postMessage({ results }), 300);
-      };
-    `
+    self.onmessage = (event) => {
+      const { cars, query } = event.data
+      if (!query || !cars) {
+        self.postMessage({ results: [] })
+        return
+      }
+      const searchTerm = query.toLowerCase()
+      const results = cars.filter((car) => {
+        const brand = car.brand?.toLowerCase() || ""
+        const model = car.model?.toLowerCase() || ""
+        return brand.includes(searchTerm) || model.includes(searchTerm)
+      })
+      setTimeout(() => {
+        self.postMessage({ results })
+      }, 300)
+    }
+  `
     const blob = new Blob([workerCode], { type: "application/javascript" })
     workerRef.current = new Worker(URL.createObjectURL(blob))
 
@@ -76,7 +74,9 @@ function App() {
       setIsSearching(false)
     }
 
-    return () => workerRef.current?.terminate()
+    return () => {
+      workerRef.current?.terminate()
+    }
   }, [])
 
   useEffect(() => {
@@ -90,50 +90,50 @@ function App() {
   const initializeData = async () => {
     setLoading(true)
     setApiStatus("checking")
+
     try {
       const response = await fetch(`${API_BASE}/cars`)
       if (response.ok) {
+        const contentType = response.headers.get("content-type")
         const data = await response.json()
-        const carsData =
-          Array.isArray(data)
-            ? data
-            : Array.isArray(data.data)
-<<<<<<< HEAD
-              ? data.data
-              : Array.isArray(data.cars)
-                ? data.cars
-                : []
-=======
-            ? data.data
-            : Array.isArray(data.cars)
-            ? data.cars
-            : []
->>>>>>> 6768db0c3fff17bd8144269a8c5689ae311eef3d
-        if (carsData.length) {
+        let carsData = []
+
+        if (Array.isArray(data)) carsData = data
+        else if (data.data && Array.isArray(data.data)) carsData = data.data
+        else if (data.cars && Array.isArray(data.cars)) carsData = data.cars
+
+        if (carsData.length > 0) {
           setAllCars(carsData)
           setApiStatus("online")
           return
         }
       }
+
       throw new Error("API not available or invalid response")
     } catch (error) {
       console.warn("API not available, using mock data:", error)
       setApiStatus("offline")
-      setAllCars(generateMockCars())
+      const mockCars = generateMockCars()
+      setAllCars(mockCars)
     } finally {
       setLoading(false)
     }
   }
 
   const filterAndPaginateCars = () => {
-    let filtered = allCars
+    let filteredCars = allCars
     if (selectedBrand && selectedBrand !== "all") {
-      filtered = allCars.filter((car) => car.brand === selectedBrand)
+      filteredCars = allCars.filter((car) => car.brand === selectedBrand)
     }
-    const totalItems = filtered.length
+
+    const totalItems = filteredCars.length
     setTotalPages(Math.ceil(totalItems / ITEMS_PER_PAGE))
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    setCars(filtered.slice(start, start + ITEMS_PER_PAGE))
+
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    const paginatedCars = filteredCars.slice(startIndex, endIndex)
+
+    setCars(paginatedCars)
   }
 
   const handleSearch = (query) => {
@@ -152,8 +152,10 @@ function App() {
       setIsAuthenticated(true)
       localStorage.setItem("carapp_auth", "authenticated")
       setShowLogin(false)
+
       if (pendingAction === "add") setShowForm(true)
-      if (pendingAction === "edit" && editingCar) setShowForm(true)
+      else if (pendingAction === "edit" && editingCar) setShowForm(true)
+
       setPendingAction(null)
       return true
     }
@@ -189,22 +191,28 @@ function App() {
 
   const handleCreateCar = async (carData) => {
     const newCar = { id: `car-${Date.now()}`, ...carData }
+
     if (apiStatus === "online") {
       try {
-        const res = await fetch(`${API_BASE}/cars`, {
+        const response = await fetch(`${API_BASE}/cars`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
           body: JSON.stringify(carData),
         })
-        if (res.ok) {
+
+        if (response.ok) {
           setAllCars((prev) => [newCar, ...prev])
           setShowForm(false)
           return
         }
-      } catch (e) {
-        console.error("Error creating car via API:", e)
+      } catch (error) {
+        console.error("Error creating car via API:", error)
       }
     }
+
     setAllCars((prev) => [newCar, ...prev])
     setShowForm(false)
   }
@@ -212,25 +220,30 @@ function App() {
   const handleUpdateCar = async (id, carData) => {
     if (apiStatus === "online") {
       try {
-        const res = await fetch(`${API_BASE}/cars/${id}`, {
+        const response = await fetch(`${API_BASE}/cars/${id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
           body: JSON.stringify(carData),
         })
-        if (res.ok) {
+
+        if (response.ok) {
           setAllCars((prev) =>
-            prev.map((car) => (car.id === id ? { ...car, ...carData } : car)),
+            prev.map((car) => (car.id === id ? { ...car, ...carData } : car))
           )
           setEditingCar(null)
           setShowForm(false)
           return
         }
-      } catch (e) {
-        console.error("Error updating car via API:", e)
+      } catch (error) {
+        console.error("Error updating car via API:", error)
       }
     }
+
     setAllCars((prev) =>
-      prev.map((car) => (car.id === id ? { ...car, ...carData } : car)),
+      prev.map((car) => (car.id === id ? { ...car, ...carData } : car))
     )
     setEditingCar(null)
     setShowForm(false)
@@ -238,17 +251,25 @@ function App() {
 
   const handleDeleteCar = async (id) => {
     if (!window.confirm("Are you sure you want to delete this car?")) return
+
     if (apiStatus === "online") {
       try {
-        const res = await fetch(`${API_BASE}/cars/${id}`, { method: "DELETE" })
-        if (res.ok) {
+        const response = await fetch(`${API_BASE}/cars/${id}`, {
+          method: "DELETE",
+          headers: {
+            Accept: "application/json",
+          },
+        })
+
+        if (response.ok) {
           setAllCars((prev) => prev.filter((car) => car.id !== id))
           return
         }
-      } catch (e) {
-        console.error("Error deleting car via API:", e)
+      } catch (error) {
+        console.error("Error deleting car via API:", error)
       }
     }
+
     setAllCars((prev) => prev.filter((car) => car.id !== id))
   }
 
@@ -257,35 +278,35 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        {/* ───────── Header ───────── */}
         <div className="header">
           <div className="header-top">
-            <h1>Car Manager</h1>
-            {isAuthenticated && (
-              <div className="user-info">
-                <span className="user-badge">
-                  👤 <strong>fn37-best</strong>
-                </span>
-                <button className="logout-btn" onClick={handleLogout}>
-                  🚪 Logout
-                </button>
-              </div>
-            )}
+            <h1>Car Management System</h1>
+            <div className="user-section">
+              {isAuthenticated && (
+                <div className="user-info">
+                  <div className="user-badge">
+                    <span className="user-icon">👤</span>
+                    <span>fn37-best</span>
+                  </div>
+                  <button className="logout-btn" onClick={handleLogout}>
+                    <span>🚪</span> Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="controls">
-            <SearchBar onSearch={handleSearch} isSearching={isSearching} />
-            <FilterBar
-              selectedBrand={selectedBrand}
-              onBrandChange={setSelectedBrand}
-            />
+            <div className="search-section">
+              <SearchBar onSearch={handleSearch} isSearching={isSearching} />
+            </div>
+            <FilterBar selectedBrand={selectedBrand} onBrandChange={setSelectedBrand} />
             <button className="add-btn" onClick={handleAddCarClick}>
-              ➕ Add Car
+              <span>➕</span> Add Car
             </button>
           </div>
         </div>
 
-        {/* ───────── Car List ───────── */}
         <CarList
           cars={displayedCars}
           loading={loading || isSearching}
@@ -295,29 +316,15 @@ function App() {
         />
 
         {!searchQuery && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         )}
 
-<<<<<<< HEAD
-        {/* ───────── Modals ───────── */}
-=======
->>>>>>> 6768db0c3fff17bd8144269a8c5689ae311eef3d
-        {selectedCar && (
-          <CarModal car={selectedCar} onClose={() => setSelectedCar(null)} />
-        )}
+        {selectedCar && <CarModal car={selectedCar} onClose={() => setSelectedCar(null)} />}
 
         {showForm && isAuthenticated && (
           <CarForm
             car={editingCar}
-            onSubmit={
-              editingCar
-                ? (data) => handleUpdateCar(editingCar.id, data)
-                : handleCreateCar
-            }
+            onSubmit={editingCar ? (data) => handleUpdateCar(editingCar.id, data) : handleCreateCar}
             onClose={() => {
               setShowForm(false)
               setEditingCar(null)
@@ -340,30 +347,10 @@ function App() {
   )
 }
 
-/* ──────────────────────────
-   ▸ Mock data generator
-   ────────────────────────── */
 function generateMockCars() {
   const brands = ["Toyota", "Honda", "BMW", "Mercedes", "Audi", "Ford"]
-  const models = [
-    "Sedan",
-    "SUV",
-    "Hatchback",
-    "Coupe",
-    "Convertible",
-    "Truck",
-    "Wagon",
-  ]
-  const colors = [
-    "Red",
-    "Blue",
-    "Black",
-    "White",
-    "Silver",
-    "Gray",
-    "Green",
-    "Yellow",
-  ]
+  const models = ["Sedan", "SUV", "Hatchback", "Coupe", "Convertible", "Truck", "Wagon"]
+  const colors = ["Red", "Blue", "Black", "White", "Silver", "Gray", "Green", "Yellow"]
   const carImages = [
     "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=300&fit=crop",
     "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop",
@@ -377,27 +364,24 @@ function generateMockCars() {
     "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=400&h=300&fit=crop",
   ]
 
-  return Array.from({ length: 50 }, (_, i) => ({
-    id: `car-${i + 1}`,
-    brand: brands[Math.floor(Math.random() * brands.length)],
-<<<<<<< HEAD
-    model: `${models[Math.floor(Math.random() * models.length)]} ${2015 + Math.floor(Math.random() * 9)
-      }`,
-=======
-    model: `${models[Math.floor(Math.random() * models.length)]} ${
-      2015 + Math.floor(Math.random() * 9)
-    }`,
->>>>>>> 6768db0c3fff17bd8144269a8c5689ae311eef3d
-    year: 2015 + Math.floor(Math.random() * 9),
-    price: 15000 + Math.floor(Math.random() * 50000),
-    color: colors[Math.floor(Math.random() * colors.length)],
-    mileage: Math.floor(Math.random() * 100000),
-    description:
-      "This is an excellent vehicle, perfect for daily commuting and long trips.",
-    thumbnails: Array.from({ length: 3 }, () =>
-      carImages[Math.floor(Math.random() * carImages.length)],
-    ),
-  }))
+  return Array.from({ length: 50 }, (_, i) => {
+    const randomImages = []
+    for (let j = 0; j < 3; j++) {
+      randomImages.push(carImages[Math.floor(Math.random() * carImages.length)])
+    }
+
+    return {
+      id: `car-${i + 1}`,
+      brand: brands[Math.floor(Math.random() * brands.length)],
+      model: `${models[Math.floor(Math.random() * models.length)]} ${2015 + Math.floor(Math.random() * 9)}`,
+      year: 2015 + Math.floor(Math.random() * 9),
+      price: 15000 + Math.floor(Math.random() * 50000),
+      color: colors[Math.floor(Math.random() * colors.length)],
+      mileage: Math.floor(Math.random() * 100000),
+      description: `This is a ${colors[Math.floor(Math.random() * colors.length)].toLowerCase()} ${brands[Math.floor(Math.random() * brands.length)]} in excellent condition.`,
+      thumbnails: randomImages,
+    }
+  })
 }
 
 export default App
