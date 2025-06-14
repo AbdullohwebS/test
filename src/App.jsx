@@ -41,13 +41,16 @@ function App() {
   }, [])
 
   useEffect(() => {
-    // Check if user is already logged in
+    document.title = "Car Manager | FN37"
+  }, [])
+
+  useEffect(() => {
+
     const savedAuth = localStorage.getItem("carapp_auth")
     if (savedAuth === "authenticated") {
       setIsAuthenticated(true)
     }
 
-    // Initialize Web Worker for search
     const workerCode = `
       self.onmessage = (event) => {
         const { cars, query } = event.data;
@@ -95,10 +98,17 @@ function App() {
           Array.isArray(data)
             ? data
             : Array.isArray(data.data)
+<<<<<<< HEAD
               ? data.data
               : Array.isArray(data.cars)
                 ? data.cars
                 : []
+=======
+            ? data.data
+            : Array.isArray(data.cars)
+            ? data.cars
+            : []
+>>>>>>> 6768db0c3fff17bd8144269a8c5689ae311eef3d
         if (carsData.length) {
           setAllCars(carsData)
           setApiStatus("online")
@@ -292,7 +302,10 @@ function App() {
           />
         )}
 
+<<<<<<< HEAD
         {/* ───────── Modals ───────── */}
+=======
+>>>>>>> 6768db0c3fff17bd8144269a8c5689ae311eef3d
         {selectedCar && (
           <CarModal car={selectedCar} onClose={() => setSelectedCar(null)} />
         )}
@@ -367,8 +380,14 @@ function generateMockCars() {
   return Array.from({ length: 50 }, (_, i) => ({
     id: `car-${i + 1}`,
     brand: brands[Math.floor(Math.random() * brands.length)],
+<<<<<<< HEAD
     model: `${models[Math.floor(Math.random() * models.length)]} ${2015 + Math.floor(Math.random() * 9)
       }`,
+=======
+    model: `${models[Math.floor(Math.random() * models.length)]} ${
+      2015 + Math.floor(Math.random() * 9)
+    }`,
+>>>>>>> 6768db0c3fff17bd8144269a8c5689ae311eef3d
     year: 2015 + Math.floor(Math.random() * 9),
     price: 15000 + Math.floor(Math.random() * 50000),
     color: colors[Math.floor(Math.random() * colors.length)],
