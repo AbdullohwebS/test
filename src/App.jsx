@@ -296,7 +296,7 @@ function App() {
       <div className="container">
         <div className="header">
           <div className="header-top">
-            <h1>Car Management System</h1>
+            <h1>Json Api Cars</h1>
             <div className="user-section">
               {isAuthenticated && (
                 <div className="user-info">
