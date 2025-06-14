@@ -33,21 +33,17 @@ function App() {
 
   const ITEMS_PER_PAGE = 5
 
-  /* ───────────────────────────────────
-     ▸ Sarlavhani o‘zgartirish (tab title)
-     ─────────────────────────────────── */
   useEffect(() => {
     document.title = "Car Manager | FN37"
   }, [])
 
   useEffect(() => {
-    // Check if user is already logged in
+
     const savedAuth = localStorage.getItem("carapp_auth")
     if (savedAuth === "authenticated") {
       setIsAuthenticated(true)
     }
 
-    // Initialize Web Worker for search
     const workerCode = `
       self.onmessage = (event) => {
         const { cars, query } = event.data;
@@ -247,7 +243,6 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        {/* ───────── Header ───────── */}
         <div className="header">
           <div className="header-top">
             <h1>Car Manager</h1>
@@ -275,7 +270,6 @@ function App() {
           </div>
         </div>
 
-        {/* ───────── Car List ───────── */}
         <CarList
           cars={displayedCars}
           loading={loading || isSearching}
@@ -292,7 +286,6 @@ function App() {
           />
         )}
 
-        {/* ───────── Modals ───────── */}
         {selectedCar && (
           <CarModal car={selectedCar} onClose={() => setSelectedCar(null)} />
         )}
@@ -327,9 +320,6 @@ function App() {
   )
 }
 
-/* ──────────────────────────
-   ▸ Mock data generator
-   ────────────────────────── */
 function generateMockCars() {
   const brands = ["Toyota", "Honda", "BMW", "Mercedes", "Audi", "Ford"]
   const models = [
